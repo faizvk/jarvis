@@ -12,9 +12,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import clock, web, system, reminders
+from . import clock, web, system, reminders, calculator, clipboard
 
-_MODULES = [clock, web, system, reminders]
+_MODULES = [clock, web, system, reminders, calculator, clipboard]
 
 TOOLS_SCHEMA: list[dict] = [schema for m in _MODULES for schema in m.SCHEMAS]
 _HANDLERS: dict[str, Callable[[dict, "ToolContext"], str]] = {
