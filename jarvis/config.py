@@ -26,6 +26,7 @@ class Config:
     stt_model: str = "base.en"
     stt_device: str = "cpu"
     stt_compute: str = "int8"
+    stt_beam_size: int = 5
     language: str = "en"
 
     # --- Audio capture ---
@@ -39,12 +40,19 @@ class Config:
     tts_rate: int = 178
     tts_voice: str = ""
 
+    # --- Wake word (openWakeWord) ---
+    wake_model: str = "hey_jarvis"
+    wake_threshold: float = 0.5
+    wake_cooldown: float = 1.0   # pause after responding before listening again
+    wake_chime: bool = True
+
     # --- Behaviour ---
     assistant_name: str = "Jarvis"
-    wake_mode: str = "enter"   # "enter" | "hotkey"
+    wake_mode: str = "wakeword"   # "wakeword" | "enter" | "hotkey"
     hotkey: str = "space"
     confirm_commands: bool = True
     search_results: int = 5
+    log_level: str = "INFO"
 
     # --- Paths (computed) ---
     state_dir: str = str(PROJECT_ROOT / "state")
@@ -61,7 +69,12 @@ _TOML_MAP = {
     ("stt", "model"): "stt_model",
     ("stt", "device"): "stt_device",
     ("stt", "compute"): "stt_compute",
+    ("stt", "beam_size"): "stt_beam_size",
     ("stt", "language"): "language",
+    ("wake", "model"): "wake_model",
+    ("wake", "threshold"): "wake_threshold",
+    ("wake", "cooldown"): "wake_cooldown",
+    ("wake", "chime"): "wake_chime",
     ("audio", "sample_rate"): "sample_rate",
     ("audio", "silence_threshold"): "silence_threshold",
     ("audio", "silence_duration"): "silence_duration",
@@ -74,6 +87,7 @@ _TOML_MAP = {
     ("behavior", "hotkey"): "hotkey",
     ("behavior", "confirm_commands"): "confirm_commands",
     ("behavior", "search_results"): "search_results",
+    ("behavior", "log_level"): "log_level",
 }
 
 
