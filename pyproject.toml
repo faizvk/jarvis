@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-assistant"
-version = "0.1.0"
+version = "0.2.0"
 description = "A local, voice-controlled terminal assistant powered by Ollama."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,6 +15,7 @@ dependencies = [
     "pyttsx3>=2.90",
     "comtypes>=1.2.0",
     "ddgs>=6.0",
+    "openwakeword>=0.6.0",
 ]
 
 [project.optional-dependencies]
