@@ -8,14 +8,34 @@ documented interface, which keeps the voice pipeline easy to reason about and te
 | Module | Responsibility |
 |---|---|
 | `jarvis/config.py` | Load defaults + optional `config.toml` into a `Config` dataclass |
+| `jarvis/wakeword.py` | `WakeWordListener` — offline "Hey Jarvis" via openWakeWord (lazy load) |
 | `jarvis/audio.py` | Capture mic audio with energy-based silence detection |
+| `jarvis/chime.py` | Short acknowledgement chime played when the wake word fires |
 | `jarvis/stt.py` | `Transcriber` — faster-whisper speech-to-text (lazy model load) |
-| `jarvis/tts.py` | `Speaker` — pyttsx3 / SAPI5 text-to-speech |
+| `jarvis/tts.py` | `Speaker` — pyttsx3 / SAPI5 text-to-speech on a single COM worker thread |
 | `jarvis/llm.py` | `OllamaClient` — `/api/chat` with tool calling, availability checks |
-| `jarvis/prompts.py` | The spoken-friendly system prompt / persona |
+| `jarvis/prompts.py` | The spoken-friendly system prompt / persona + tool guidance |
+| `jarvis/logconf.py` | Rotating file logging under `state/jarvis.log` |
 | `jarvis/tools/` | Tool implementations + registry (`TOOLS_SCHEMA`, `dispatch`) |
-| `jarvis/agent.py` | `Jarvis` — orchestration, tool loop, voice/text loops |
-| `jarvis/__main__.py` | CLI: arg parsing, `--doctor`, `--say`, startup checks |
+| `jarvis/agent.py` | `Jarvis` — orchestration, tool loop, wake/enter/text/once loops |
+| `jarvis/__main__.py` | CLI: arg parsing, `--wake`/`--ptt`/`--once`/`--doctor`/`--say` |
+
+Tools live in `jarvis/tools/`: `clock`, `web`, `system` (open app / run command /
+system info), `calculator` (safe AST arithmetic), `clipboard`, and `reminders`
+(with the persistent `Scheduler`).
+
+## Interaction loops
+
+`run_voice_loop` dispatches on `config.wake_mode`:
+
+- **wakeword** (default): `_wake_loop` waits on `WakeWordListener.wait_for_wake()`,
+  plays a chime, then captures and answers one utterance, then cools down and resumes.
+- **enter**: `_enter_loop` waits for the Enter key before each utterance.
+
+Both share `_capture_one` (record → transcribe) and `_handle_utterance` (exit-word
+check → respond). `run_text_loop` is the keyboard-only variant; `run_once` answers a
+single query for `--once`. The wake listener and recorder open the mic sequentially,
+never at the same time, and TTS is blocking so Jarvis never records its own voice.
 
 ## The turn loop
 
