@@ -11,9 +11,12 @@ Write-Host "Upgrading pip and installing requirements..."
 & $python -m pip install --upgrade pip
 & $python -m pip install -r requirements.txt
 
+Write-Host "Downloading wake-word models (Hey Jarvis)..."
+& $python -c "from openwakeword.utils import download_models; download_models()"
+
 Write-Host ""
 Write-Host "Python dependencies installed. Next steps:" -ForegroundColor Green
 Write-Host "  1) Install Ollama:   winget install Ollama.Ollama"
 Write-Host "  2) Pull a model:     ollama pull llama3.1:8b"
 Write-Host "  3) Check the setup:  .\run.ps1 --doctor"
-Write-Host "  4) Talk to Jarvis:   .\run.ps1"
+Write-Host "  4) Say 'Hey Jarvis': .\run.ps1"
