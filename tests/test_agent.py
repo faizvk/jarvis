@@ -55,3 +55,17 @@ def test_open_application_rejects_shell_metacharacters():
     # A name crafted to break out into a second command must be refused, not run.
     out = dispatch("open_application", {"name": 'foo" & calc & "'}, SimpleNamespace())
     assert "unsafe" in out.lower()
+
+
+def test_run_once_returns_and_speaks_reply():
+    jarvis = _make_jarvis()
+    with patch.object(jarvis.client, "chat",
+                      side_effect=[{"role": "assistant", "content": "All done."}]):
+        # run_once stops the scheduler itself.
+        assert jarvis.run_once("do the thing") == "All done."
+
+
+def test_calculator_is_registered_for_the_model():
+    from jarvis.tools import tool_names
+
+    assert "calculate" in tool_names()
