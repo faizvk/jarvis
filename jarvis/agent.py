@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -118,10 +119,40 @@ class Jarvis:
         self.speaker = build_speaker(self.config)
         self.transcriber = build_transcriber(self.config)
 
-    def run_voice_loop(self) -> None:
+    def _capture_one(self) -> str:
+        """Record and transcribe a single utterance ('' if nothing was heard)."""
         from .audio import record_utterance
 
+        print("Listening...")
+        audio = record_utterance(self.config, on_speech_start=lambda: print("  (hearing you)"))
+        return self.transcriber.transcribe(audio).strip()
+
+    def _is_exit(self, text: str) -> bool:
+        return text.lower().strip(" .!?") in _EXIT_WORDS
+
+    def _handle_utterance(self, text: str) -> bool:
+        """Act on one transcribed utterance. Returns False when Jarvis should quit."""
+        if not text:
+            print("  (didn't catch that — try again)")
+            return True
+        print(f"You: {text}")
+        if self._is_exit(text):
+            self.speak("Goodbye.")
+            return False
+        self._respond(text)
+        return True
+
+    def run_voice_loop(self) -> None:
         self.enable_voice()
+        try:
+            if self.config.wake_mode == "wakeword":
+                self._wake_loop()
+            else:
+                self._enter_loop()
+        finally:
+            self.scheduler.stop()
+
+    def _enter_loop(self) -> None:
         name = self.config.assistant_name
         self.speak(f"{name} online. Press Enter and speak. Say goodbye, or press Control C, to quit.")
         while True:
@@ -129,40 +160,74 @@ class Jarvis:
                 input("\n[Press Enter, then speak] ")
             except (EOFError, KeyboardInterrupt):
                 break
-            print("Listening...")
             try:
-                audio = record_utterance(self.config, on_speech_start=lambda: print("  (hearing you)"))
-                text = self.transcriber.transcribe(audio).strip()
+                text = self._capture_one()
             except KeyboardInterrupt:
                 break
             except Exception as exc:
-                # A transient mic/STT glitch should skip the turn, not crash Jarvis.
                 print(f"  (audio error — {exc}; try again)")
                 continue
-            if not text:
-                print("  (didn't catch that — try again)")
-                continue
-            print(f"You: {text}")
-            if text.lower().strip(" .!?") in _EXIT_WORDS:
-                self.speak("Goodbye.")
+            if not self._handle_utterance(text):
                 break
-            self._respond(text)
-        self.scheduler.stop()
+
+    def _wake_loop(self) -> None:
+        from .chime import play_chime
+        from .wakeword import WakeWordListener
+
+        name = self.config.assistant_name
+        listener = WakeWordListener(self.config)
+        print(f"Loading wake word '{self.config.wake_model}' (first run downloads it)...")
+        self.speak(f"{name} online. Say, hey {name}, to wake me. Press Control C to quit.")
+        while True:
+            print(f"\nListening for 'Hey {name}'...  (Ctrl+C to quit)")
+            try:
+                woke = listener.wait_for_wake()
+            except KeyboardInterrupt:
+                break
+            except Exception as exc:
+                print(f"  (wake-word error — {exc})")
+                self.speak("My wake word detector couldn't start.")
+                break
+            if not woke:
+                continue
+            if self.config.wake_chime:
+                play_chime(self.config.sample_rate)
+            try:
+                text = self._capture_one()
+            except KeyboardInterrupt:
+                break
+            except Exception as exc:
+                print(f"  (audio error — {exc}; try again)")
+                continue
+            if not self._handle_utterance(text):
+                break
+            time.sleep(max(0.0, self.config.wake_cooldown))
 
     def run_text_loop(self) -> None:
         name = self.config.assistant_name
         print(f"{name} (text mode). Type your message, or 'quit' to exit.")
-        while True:
-            try:
-                text = input("\nYou: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                break
-            if not text:
-                continue
-            if text.lower() in _EXIT_WORDS:
-                break
-            self._respond(text)
-        self.scheduler.stop()
+        try:
+            while True:
+                try:
+                    text = input("\nYou: ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if not text:
+                    continue
+                if self._is_exit(text):
+                    break
+                self._respond(text)
+        finally:
+            self.scheduler.stop()
+
+    def run_once(self, text: str) -> str:
+        """Handle a single query (used by --once) and return the reply."""
+        try:
+            reply = self.handle_text(text)
+            self.speak(reply)
+            return reply
+        finally:
+            self.scheduler.stop()
 
     def _respond(self, text: str) -> None:
         try:
