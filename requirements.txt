@@ -8,3 +8,4 @@ faster-whisper>=1.0.3   # offline speech-to-text (CTranslate2, no torch)
 pyttsx3>=2.90           # offline text-to-speech (Windows SAPI5)
 comtypes>=1.2.0         # required by pyttsx3 sapi5 driver on Windows
 ddgs>=6.0               # DuckDuckGo web search (no API key); successor to duckduckgo_search
+openwakeword>=0.6.0     # offline "Hey Jarvis" wake-word detection (onnxruntime backend)
