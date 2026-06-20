@@ -10,7 +10,33 @@ def test_defaults():
     assert c.model
     assert c.confirm_commands is True
     assert c.sample_rate == 16000
-    assert c.wake_mode in ("enter", "hotkey")
+    assert c.wake_mode in ("wakeword", "enter", "hotkey")
+
+
+def test_wake_defaults():
+    c = Config()
+    assert c.wake_mode == "wakeword"
+    assert c.wake_model == "hey_jarvis"
+    assert 0.0 <= c.wake_threshold <= 1.0
+    assert c.wake_chime is True
+
+
+def test_wake_toml_overlay(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        "[wake]\n"
+        'model = "alexa"\n'
+        "threshold = 0.8\n"
+        "chime = false\n"
+        "[stt]\n"
+        "beam_size = 1\n",
+        encoding="utf-8",
+    )
+    c = load_config(str(cfg))
+    assert c.wake_model == "alexa"
+    assert c.wake_threshold == 0.8
+    assert c.wake_chime is False
+    assert c.stt_beam_size == 1
 
 
 def test_load_config_returns_config_and_makes_state_dir():
