@@ -10,10 +10,19 @@ temperature = 0.6
 [stt]
 # faster-whisper model: tiny.en | base.en | small.en | medium.en | large-v3
 # Larger = more accurate but slower. base.en is a good CPU default.
-model    = "base.en"
-device   = "cpu"      # "cpu" or "cuda" (cuda needs CUDA + cuDNN installed)
-compute  = "int8"     # int8 (cpu) | float16 (cuda)
-language = "en"
+model     = "base.en"
+device    = "cpu"      # "cpu" or "cuda" (cuda needs CUDA + cuDNN installed)
+compute   = "int8"     # int8 (cpu) | float16 (cuda)
+beam_size = 5          # higher = more accurate, a little slower
+language  = "en"
+
+[wake]
+# Wake word via openWakeWord. Pretrained options include: hey_jarvis, alexa,
+# hey_mycroft, hey_rhasspy. Models download automatically on first use.
+model     = "hey_jarvis"
+threshold = 0.5   # 0-1; lower = easier to trigger (more false positives)
+cooldown  = 1.0   # seconds to wait after answering before listening again
+chime     = true  # play a short chime when the wake word is heard
 
 [audio]
 sample_rate       = 16000
@@ -28,7 +37,8 @@ voice = ""    # substring of an installed SAPI5 voice name, e.g. "David" or "Zir
 
 [behavior]
 assistant_name  = "Jarvis"
-wake_mode       = "enter"  # "enter" = press Enter then speak | "hotkey" = hold a key
-hotkey          = "space"  # used only when wake_mode = "hotkey" (requires the `keyboard` package)
-confirm_commands = true    # ask y/n before running any shell command
+wake_mode       = "wakeword"  # "wakeword" = say "Hey Jarvis" | "enter" = press Enter then speak
+hotkey          = "space"     # reserved for a future hold-to-talk mode
+confirm_commands = true       # ask y/n before running any shell command
 search_results  = 5
+log_level       = "INFO"      # DEBUG | INFO | WARNING | ERROR (logs to state/jarvis.log)
