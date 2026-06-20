@@ -49,6 +49,9 @@ SCHEMAS = [
 ]
 
 
+_SNIPPET_LIMIT = 220  # keep snippets short — the result is read aloud
+
+
 def _web_search(args: dict, ctx) -> str:
     if DDGS is None:
         return "Web search is unavailable because the ddgs package is not installed."
@@ -59,14 +62,27 @@ def _web_search(args: dict, ctx) -> str:
         n = int(args.get("max_results") or ctx.config.search_results)
     except (TypeError, ValueError):
         n = ctx.config.search_results
+    n = max(1, min(n, 10))
 
+    try:
+        with DDGS() as ddgs:
+            raw = list(ddgs.text(query, max_results=n))
+    except Exception as exc:
+        # DuckDuckGo rate-limits aggressively; fail soft so the agent can recover.
+        return f"I couldn't complete the web search right now ({exc})."
+
+    seen: set[str] = set()
     results = []
-    with DDGS() as ddgs:
-        for r in ddgs.text(query, max_results=max(1, n)):
-            title = r.get("title", "").strip()
-            body = r.get("body", "").strip()
-            href = r.get("href", "").strip()
-            results.append(f"- {title}: {body} ({href})")
+    for r in raw:
+        href = (r.get("href") or "").strip()
+        if href in seen:
+            continue  # drop duplicate URLs
+        seen.add(href)
+        title = (r.get("title") or "").strip()
+        body = (r.get("body") or "").strip()
+        if len(body) > _SNIPPET_LIMIT:
+            body = body[:_SNIPPET_LIMIT].rstrip() + "..."
+        results.append(f"- {title}: {body} ({href})")
 
     if not results:
         return f"No results found for '{query}'."
