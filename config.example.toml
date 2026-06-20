@@ -1,0 +1,34 @@
+# Jarvis configuration TEMPLATE. Copy this file to config.toml and edit that.
+# This example is never auto-loaded; only config.toml is. Any value you omit
+# falls back to the built-in default (see jarvis/config.py).
+
+[llm]
+host        = "http://localhost:11434"  # Ollama server
+model       = "llama3.1:8b"             # must be a tool-calling capable model
+temperature = 0.6
+
+[stt]
+# faster-whisper model: tiny.en | base.en | small.en | medium.en | large-v3
+# Larger = more accurate but slower. base.en is a good CPU default.
+model    = "base.en"
+device   = "cpu"      # "cpu" or "cuda" (cuda needs CUDA + cuDNN installed)
+compute  = "int8"     # int8 (cpu) | float16 (cuda)
+language = "en"
+
+[audio]
+sample_rate       = 16000
+silence_threshold = 0.012  # RMS below this counts as silence (raise if your mic is noisy)
+silence_duration  = 1.2    # seconds of trailing silence that ends an utterance
+max_record_seconds = 20.0
+min_record_seconds = 0.4
+
+[tts]
+rate  = 178   # words per minute
+voice = ""    # substring of an installed SAPI5 voice name, e.g. "David" or "Zira"; "" = default
+
+[behavior]
+assistant_name  = "Jarvis"
+wake_mode       = "enter"  # "enter" = press Enter then speak | "hotkey" = hold a key
+hotkey          = "space"  # used only when wake_mode = "hotkey" (requires the `keyboard` package)
+confirm_commands = true    # ask y/n before running any shell command
+search_results  = 5
