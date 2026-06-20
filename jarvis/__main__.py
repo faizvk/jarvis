@@ -13,6 +13,7 @@ import sys
 
 from .config import load_config
 from .llm import OllamaClient
+from .logconf import setup_logging
 
 
 def _doctor(config) -> int:
@@ -60,6 +61,15 @@ def _doctor(config) -> int:
     except Exception as exc:
         print(f"[!!] faster-whisper import failed: {exc}")
 
+    try:
+        import openwakeword  # noqa: F401
+
+        print(f"[OK] openwakeword installed; wake word = '{config.wake_model}' "
+              "(models download on first use)")
+    except Exception as exc:
+        print(f"[!!] openwakeword import failed: {exc}")
+
+    print(f"\nwake_mode = {config.wake_mode}")
     return 0
 
 
@@ -68,6 +78,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="jarvis", description="A local voice assistant powered by Ollama."
     )
     parser.add_argument("--text", action="store_true", help="Text mode: type instead of speaking.")
+    parser.add_argument("--wake", action="store_true", help="Force wake-word mode ('Hey Jarvis').")
+    parser.add_argument("--ptt", action="store_true", help="Force press-Enter mode (no wake word).")
+    parser.add_argument("--once", metavar="QUERY", help="Answer a single query and exit.")
     parser.add_argument("--doctor", action="store_true", help="Check the setup and exit.")
     parser.add_argument("--config", help="Path to a config TOML file.")
     parser.add_argument("--model", help="Override the Ollama model for this run.")
@@ -77,6 +90,12 @@ def main(argv: list[str] | None = None) -> int:
     config = load_config(args.config)
     if args.model:
         config.model = args.model
+    if args.wake:
+        config.wake_mode = "wakeword"
+    elif args.ptt:
+        config.wake_mode = "enter"
+
+    setup_logging(config)
 
     if args.doctor:
         return _doctor(config)
@@ -107,7 +126,9 @@ def main(argv: list[str] | None = None) -> int:
 
     jarvis = Jarvis(config)
     try:
-        if args.text:
+        if args.once:
+            print(jarvis.run_once(args.once))
+        elif args.text:
             jarvis.run_text_loop()
         else:
             jarvis.run_voice_loop()
