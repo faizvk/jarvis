@@ -13,12 +13,24 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import shutil
 import subprocess
 
 _COMMAND_TIMEOUT = 30  # seconds
 # Characters that could let a crafted name break out into command execution.
 _UNSAFE_NAME_CHARS = set('&|<>^"%`\n\r')
+# Commands that can destroy data or disrupt the system: always confirm these,
+# even when confirm_commands is turned off.
+_DESTRUCTIVE = re.compile(
+    r"\b(del|erase|rd|rmdir|format|diskpart|fsutil|cipher|shutdown|taskkill|"
+    r"reg\s+delete|remove-item|rm)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_destructive(command: str) -> bool:
+    return bool(_DESTRUCTIVE.search(command))
 
 SCHEMAS = [
     {
@@ -88,8 +100,13 @@ def _run_command(args: dict, ctx) -> str:
     command = (args.get("command") or "").strip()
     if not command:
         return "No command was provided."
-    if getattr(ctx.config, "confirm_commands", True):
-        if not ctx.confirm(f"Run this command: {command}"):
+    destructive = _is_destructive(command)
+    # Always confirm destructive commands, regardless of the confirm_commands setting.
+    if getattr(ctx.config, "confirm_commands", True) or destructive:
+        prompt = f"Run this command: {command}"
+        if destructive:
+            prompt = "This command may change or delete data. " + prompt
+        if not ctx.confirm(prompt):
             return "Command cancelled by the user."
     try:
         proc = subprocess.run(
