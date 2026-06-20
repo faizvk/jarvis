@@ -1,0 +1,31 @@
+[project]
+name = "jarvis-assistant"
+version = "0.1.0"
+description = "A local, voice-controlled terminal assistant powered by Ollama."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "faizvk", email = "faizvk14@gmail.com" }]
+keywords = ["voice-assistant", "ollama", "speech-to-text", "jarvis", "llm"]
+dependencies = [
+    "requests>=2.31",
+    "numpy>=1.26",
+    "sounddevice>=0.4.6",
+    "faster-whisper>=1.0.3",
+    "pyttsx3>=2.90",
+    "comtypes>=1.2.0",
+    "ddgs>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+jarvis = "jarvis.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["jarvis", "jarvis.tools"]
