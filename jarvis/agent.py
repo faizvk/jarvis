@@ -201,6 +201,8 @@ class Jarvis:
                 self._enter_loop()
         finally:
             self.scheduler.stop()
+            if self.speaker:
+                self.speaker.stop()
 
     def _enter_loop(self) -> None:
         name = self.config.assistant_name
@@ -285,6 +287,8 @@ class Jarvis:
                 self._respond(text)
         finally:
             self.scheduler.stop()
+            if self.speaker:
+                self.speaker.stop()
 
     def run_once(self, text: str) -> str:
         """Handle a single query (used by --once) and return the reply."""
@@ -294,6 +298,8 @@ class Jarvis:
             return reply
         finally:
             self.scheduler.stop()
+            if self.speaker:
+                self.speaker.stop()
 
     def _respond(self, text: str) -> None:
         try:
