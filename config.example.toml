@@ -6,6 +6,8 @@
 host        = "http://localhost:11434"  # Ollama server
 model       = "llama3.2:3b"             # tool-calling capable; fits a 4GB GPU. 8b/qwen2.5:7b need ~6GB+
 temperature = 0.6
+keep_alive  = "30m"                     # keep model in VRAM between turns ("-1" = forever, "0" = unload now)
+num_ctx     = 4096                      # context window in tokens; lower (e.g. 2048) if VRAM is tight
 
 [stt]
 # faster-whisper model: tiny.en | base.en | small.en | medium.en | large-v3
