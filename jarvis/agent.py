@@ -227,17 +227,32 @@ class Jarvis:
         name = self.config.assistant_name
         listener = WakeWordListener(self.config)
         print(f"Loading wake word '{self.config.wake_model}' (first run downloads it)...")
+        try:
+            listener.load()
+        except Exception as exc:
+            # Can't build/download the model — degrade to press-Enter, don't die.
+            print(f"  (wake-word model unavailable — {exc})")
+            self.speak("I couldn't load my wake word, switching to press Enter mode.")
+            return self._enter_loop()
+
         self.speak(f"{name} online. Say, hey {name}, to wake me. Press Control C to quit.")
+        failures = 0
         while True:
             print(f"\nListening for 'Hey {name}'...  (Ctrl+C to quit)")
             try:
                 woke = listener.wait_for_wake()
+                failures = 0
             except KeyboardInterrupt:
                 break
             except Exception as exc:
-                print(f"  (wake-word error — {exc})")
-                self.speak("My wake word detector couldn't start.")
-                break
+                # Transient mic glitch (unplug / re-enumerate): retry, don't quit.
+                failures += 1
+                print(f"  (wake audio glitch — {exc}; retry {failures}/5)")
+                if failures >= 5:
+                    self.speak("My microphone keeps failing. Stopping wake mode.")
+                    break
+                time.sleep(0.5)
+                continue
             if not woke:
                 continue
             if self.config.wake_chime:
