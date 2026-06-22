@@ -4,7 +4,7 @@
 
 [llm]
 host        = "http://localhost:11434"  # Ollama server
-model       = "llama3.1:8b"             # must be a tool-calling capable model
+model       = "llama3.2:3b"             # tool-calling capable; fits a 4GB GPU. 8b/qwen2.5:7b need ~6GB+
 temperature = 0.6
 
 [stt]
