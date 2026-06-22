@@ -37,6 +37,7 @@ def record_utterance(config, on_speech_start=None) -> "np.ndarray":
     frames: list[np.ndarray] = []
     silent_run = 0
     speech_blocks = 0
+    loud_run = 0
     started = False
 
     with sd.InputStream(samplerate=sr, channels=1, dtype="float32", blocksize=block) as stream:
@@ -47,14 +48,19 @@ def record_utterance(config, on_speech_start=None) -> "np.ndarray":
 
             if rms >= config.silence_threshold:
                 speech_blocks += 1
+                loud_run += 1
                 if not started and speech_blocks >= started_min:
                     started = True
                     if on_speech_start:
                         on_speech_start()
                 if started:
-                    silent_run = 0
                     frames.append(mono)
+                    # Only a sustained run (~2 loud blocks) clears the trailing-silence
+                    # countdown, so a lone noisy block in the tail can't keep recording.
+                    if loud_run >= 2:
+                        silent_run = 0
             elif started:
+                loud_run = 0
                 silent_run += 1
                 frames.append(mono)
                 if len(frames) >= min_blocks and silent_run >= silence_needed:
