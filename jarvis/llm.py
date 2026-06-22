@@ -9,11 +9,14 @@ class OllamaError(RuntimeError):
 
 
 class OllamaClient:
-    def __init__(self, host: str, model: str, temperature: float = 0.6, timeout: int = 120):
+    def __init__(self, host: str, model: str, temperature: float = 0.6, timeout: int = 120,
+                 keep_alive: str = "30m", num_ctx: int = 4096):
         self.host = host.rstrip("/")
         self.model = model
         self.temperature = temperature
         self.timeout = timeout
+        self.keep_alive = keep_alive
+        self.num_ctx = num_ctx
 
     # --- availability checks -------------------------------------------------
     def is_available(self) -> bool:
@@ -34,7 +37,7 @@ class OllamaClient:
         models = self.available_models()
         if self.model in models:
             return True
-        # Tolerate a missing/extra ":latest" tag (e.g. "llama3.1:8b" vs "llama3.1:8b").
+        # Tolerate a missing/extra tag (e.g. "llama3.2" matching "llama3.2:3b").
         bases = {m.split(":")[0] for m in models}
         return self.model.split(":")[0] in bases
 
@@ -49,7 +52,8 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "options": {"temperature": self.temperature},
+            "keep_alive": self.keep_alive,  # top-level: keeps the model warm in VRAM
+            "options": {"temperature": self.temperature, "num_ctx": self.num_ctx},
         }
         if tools:
             payload["tools"] = tools
