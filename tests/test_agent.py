@@ -69,3 +69,45 @@ def test_calculator_is_registered_for_the_model():
     from jarvis.tools import tool_names
 
     assert "calculate" in tool_names()
+
+
+def test_empty_model_turn_gets_a_fallback_reply():
+    jarvis = _make_jarvis()
+    try:
+        with patch.object(jarvis.client, "chat",
+                          side_effect=[{"role": "assistant", "content": ""}]):
+            assert jarvis.handle_text("hello")  # never returns an empty string
+    finally:
+        jarvis.scheduler.stop()
+
+
+def test_preamble_is_spoken_during_a_tool_call():
+    jarvis = _make_jarvis()
+    spoken = []
+    jarvis.speak = lambda t: spoken.append(t)  # capture what would be voiced
+    try:
+        turns = [
+            {"role": "assistant", "content": "Let me check the time.",
+             "tool_calls": [{"function": {"name": "get_current_time", "arguments": {}}}]},
+            {"role": "assistant", "content": "It is noon."},
+        ]
+        with patch.object(jarvis.client, "chat", side_effect=turns):
+            reply = jarvis.handle_text("what time is it")
+        assert "Let me check the time." in spoken
+        assert reply == "It is noon."
+    finally:
+        jarvis.scheduler.stop()
+
+
+def test_history_is_bounded():
+    jarvis = _make_jarvis()
+    jarvis.MAX_HISTORY = 4
+    try:
+        with patch.object(jarvis.client, "chat",
+                          side_effect=[{"role": "assistant", "content": "ok"}] * 12):
+            for i in range(8):
+                jarvis.handle_text(f"msg {i}")
+        assert jarvis.messages[0]["role"] == "system"   # system prompt stays pinned
+        assert len(jarvis.messages) <= jarvis.MAX_HISTORY + 1
+    finally:
+        jarvis.scheduler.stop()
