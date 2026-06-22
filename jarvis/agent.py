@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -124,6 +125,9 @@ class Jarvis:
 
         self.speaker = build_speaker(self.config)
         self.transcriber = build_transcriber(self.config)
+        # Load the speech model off the interactive path so the first utterance
+        # isn't blocked on a model download/load after the user has spoken.
+        threading.Thread(target=self.transcriber.warm_up, daemon=True).start()
 
     def _capture_one(self) -> str:
         """Record and transcribe a single utterance ('' if nothing was heard)."""
@@ -148,7 +152,13 @@ class Jarvis:
         self._respond(text)
         return True
 
+    def _warm_up_async(self) -> None:
+        """Preload the LLM in the background so the first reply isn't a cold load."""
+        print("Warming up the model...")
+        threading.Thread(target=self.client.warm_up, daemon=True).start()
+
     def run_voice_loop(self) -> None:
+        self._warm_up_async()
         self.enable_voice()
         try:
             if self.config.wake_mode == "wakeword":
@@ -210,6 +220,7 @@ class Jarvis:
             time.sleep(max(0.0, self.config.wake_cooldown))
 
     def run_text_loop(self) -> None:
+        self._warm_up_async()
         name = self.config.assistant_name
         print(f"{name} (text mode). Type your message, or 'quit' to exit.")
         try:
