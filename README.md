@@ -33,7 +33,7 @@ Everything except the optional web search runs offline.
 
 - Windows 10/11, **Python 3.11+** (3.12 tested)
 - A working microphone and speakers
-- [Ollama](https://ollama.com) with a **tool-calling capable** model (e.g. `llama3.1:8b`)
+- [Ollama](https://ollama.com) with a **tool-calling capable** model (e.g. `llama3.2:3b`)
 
 ## Setup
 
@@ -43,7 +43,7 @@ Everything except the optional web search runs offline.
 
 # 2. Install Ollama and pull a model
 winget install Ollama.Ollama
-ollama pull llama3.1:8b
+ollama pull llama3.2:3b
 
 # 3. Verify everything is wired up
 .\run.ps1 --doctor
@@ -84,6 +84,22 @@ need confirmation. See the comments in the file for details.
 
 Two environment variables also override config: `JARVIS_MODEL` and `OLLAMA_HOST`.
 
+### Choosing a model
+
+The default `llama3.2:3b` is sized to fit a ~4 GB GPU (e.g. a GTX 1650) entirely in
+VRAM, which keeps replies fast. Bigger, stronger tool-callers exist but need more VRAM
+or they spill onto the CPU and get slow:
+
+| Model | Approx. VRAM | Notes |
+|---|---|---|
+| `llama3.2:3b` (default) | ~2–3 GB | Fast on a 4 GB GPU; good tool use |
+| `qwen2.5:7b` | ~5 GB | Stronger; needs ≥6 GB VRAM |
+| `llama3.1:8b` | ~5–6 GB | Strong; spills to CPU on a 4 GB card (slow) |
+
+Set it in `config.toml` (`[llm] model = "…"`) or per run with `--model`. Two related
+knobs: `[llm] keep_alive` (how long Ollama keeps the model in VRAM between turns) and
+`[llm] num_ctx` (context window — lower it if you hit VRAM limits).
+
 ## Safety
 
 `run_command` is the only tool that executes an arbitrary shell command, and by
@@ -98,7 +114,7 @@ prompt. It is intentionally not gated (opening Notepad shouldn't need a y/n).
 ## Troubleshooting
 
 - **"Can't reach Ollama"** — start the Ollama app, or run `ollama serve`, then retry.
-- **"model isn't pulled"** — `ollama pull llama3.1:8b` (or whatever model you set).
+- **"model isn't pulled"** — `ollama pull llama3.2:3b` (or whatever model you set).
 - **No audio / mic not found** — run `.\run.ps1 --doctor` to list input devices; pick a
   different default mic in Windows Sound settings.
 - **It doesn't hear me** — raise/lower `silence_threshold` in `config.toml`.
