@@ -21,6 +21,8 @@ class Config:
     host: str = "http://localhost:11434"
     model: str = "llama3.2:3b"
     temperature: float = 0.6
+    keep_alive: str = "30m"   # how long Ollama keeps the model in VRAM between turns
+    num_ctx: int = 4096       # context window in tokens
 
     # --- Speech-to-text (faster-whisper) ---
     stt_model: str = "base.en"
@@ -66,6 +68,8 @@ _TOML_MAP = {
     ("llm", "host"): "host",
     ("llm", "model"): "model",
     ("llm", "temperature"): "temperature",
+    ("llm", "keep_alive"): "keep_alive",
+    ("llm", "num_ctx"): "num_ctx",
     ("stt", "model"): "stt_model",
     ("stt", "device"): "stt_device",
     ("stt", "compute"): "stt_compute",
