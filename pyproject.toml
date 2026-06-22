@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-assistant"
-version = "0.2.0"
+version = "0.2.1"
 description = "A local, voice-controlled terminal assistant powered by Ollama."
 readme = "README.md"
 requires-python = ">=3.11"
