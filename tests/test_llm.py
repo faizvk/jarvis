@@ -56,3 +56,34 @@ def test_is_available_false_on_connection_error():
     client = OllamaClient("http://x", "m")
     with patch("jarvis.llm.requests.get", side_effect=requests.RequestException("nope")):
         assert client.is_available() is False
+
+
+def test_chat_sends_keep_alive_top_level_and_num_ctx_in_options():
+    client = OllamaClient("http://x", "m", keep_alive="42m", num_ctx=2048)
+    with patch("jarvis.llm.requests.post",
+               return_value=_resp({"message": {"content": "ok"}})) as post:
+        client.chat([{"role": "user", "content": "hi"}])
+    sent = post.call_args.kwargs["json"]
+    assert sent["keep_alive"] == "42m"          # top-level field
+    assert "keep_alive" not in sent["options"]  # NOT nested in options
+    assert sent["options"]["num_ctx"] == 2048
+
+
+def test_chat_retries_once_then_raises():
+    client = OllamaClient("http://x", "m")
+    with patch("jarvis.llm.requests.post",
+               side_effect=requests.RequestException("down")) as post, \
+         patch("jarvis.llm.time.sleep"):
+        try:
+            client.chat([])
+        except OllamaError:
+            pass
+        else:
+            raise AssertionError("expected OllamaError")
+    assert post.call_count == 2  # one retry
+
+
+def test_warm_up_never_raises():
+    client = OllamaClient("http://x", "m")
+    with patch("jarvis.llm.requests.post", side_effect=requests.RequestException("down")):
+        client.warm_up()  # must swallow the error
