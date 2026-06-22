@@ -67,3 +67,17 @@ class OllamaClient:
         if isinstance(data, dict) and data.get("error"):
             raise OllamaError(str(data["error"]))
         return data.get("message", {}) if isinstance(data, dict) else {}
+
+    def warm_up(self) -> None:
+        """Preload the model into memory before the first real turn (best-effort)."""
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+            "keep_alive": self.keep_alive,
+            "options": {"temperature": self.temperature, "num_predict": 1},
+        }
+        try:
+            requests.post(f"{self.host}/api/chat", json=payload, timeout=self.timeout)
+        except requests.RequestException:
+            pass  # warm-up is an optimisation; never fail startup on it
