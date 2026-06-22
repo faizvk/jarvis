@@ -1,7 +1,8 @@
 """Tests for configuration loading."""
+import tomllib
 from pathlib import Path
 
-from jarvis.config import Config, load_config
+from jarvis.config import PROJECT_ROOT, Config, load_config
 
 
 def test_defaults():
@@ -67,3 +68,20 @@ def test_env_override(monkeypatch):
     monkeypatch.setenv("JARVIS_MODEL", "env-model")
     c = load_config()
     assert c.model == "env-model"
+
+
+def test_llm_warmth_defaults():
+    c = Config()
+    assert c.keep_alive          # non-empty duration string
+    assert c.num_ctx >= 1024
+
+
+def test_model_default_consistent_across_files():
+    # Config().model is the single source of truth; docs/scaffold must agree, so a
+    # future model swap that misses a file fails here instead of shipping mismatched
+    # pull instructions.
+    expected = Config().model
+    example = tomllib.loads((PROJECT_ROOT / "config.example.toml").read_text("utf-8"))
+    assert example["llm"]["model"] == expected
+    for name in ("setup.ps1", "README.md"):
+        assert expected in (PROJECT_ROOT / name).read_text("utf-8"), f"{name} missing {expected!r}"
