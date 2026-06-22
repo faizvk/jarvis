@@ -19,7 +19,13 @@ _EXIT_WORDS = {"quit", "exit", "goodbye", "good bye", "stop jarvis", "shut down"
 class Jarvis:
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
-        self.client = OllamaClient(self.config.host, self.config.model, self.config.temperature)
+        self.client = OllamaClient(
+            self.config.host,
+            self.config.model,
+            self.config.temperature,
+            keep_alive=self.config.keep_alive,
+            num_ctx=self.config.num_ctx,
+        )
         self.speaker = None        # built on demand for voice mode
         self.transcriber = None
         self.scheduler = Scheduler(
