@@ -7,6 +7,7 @@ persisted to JSON so pending reminders survive a restart.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -33,6 +34,8 @@ class Scheduler:
 
     def stop(self) -> None:
         self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2)
 
     def _run(self) -> None:
         # The whole body is guarded: a single malformed item must never be able
@@ -101,9 +104,11 @@ class Scheduler:
 
     def _save(self) -> None:
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        self._state_path.write_text(
-            json.dumps(list(self._items.values())), encoding="utf-8"
-        )
+        # Write to a temp file then atomically replace, so a crash mid-write can't
+        # truncate reminders.json (which would later kill the scheduler thread).
+        tmp = self._state_path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(list(self._items.values())), encoding="utf-8")
+        os.replace(tmp, self._state_path)
 
 
 SCHEMAS = [
