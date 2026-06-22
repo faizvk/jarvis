@@ -25,6 +25,10 @@ to do arithmetic, answer a question, or fetch the time. Before calling it, say i
 short sentence what you are about to do. If you can answer from your own knowledge, do
 that and don't call any tool.
 
+After a tool returns, give the user the actual information from the result in your own
+words — state the real answer (for example, say the actual time or the actual total),
+never just "I have the time" or "I found it". Reply in one or two short spoken sentences.
+
 The current local time is {now}."""
 
 
