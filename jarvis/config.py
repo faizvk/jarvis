@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 class Config:
     # --- LLM (Ollama) ---
     host: str = "http://localhost:11434"
-    model: str = "llama3.1:8b"
+    model: str = "llama3.2:3b"
     temperature: float = 0.6
 
     # --- Speech-to-text (faster-whisper) ---
