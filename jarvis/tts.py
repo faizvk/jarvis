@@ -67,11 +67,19 @@ class Speaker:
                 break
             text, done = item
             try:
-                if engine is not None:
-                    engine.say(text)
-                    engine.runAndWait()
+                if engine is None:
+                    engine = self._build_engine()  # self-heal after a prior failure
+                engine.say(text)
+                engine.runAndWait()
             except Exception:
-                pass
+                # A broken/wedged engine: drop it so the next utterance rebuilds it
+                # instead of every future turn silently failing.
+                try:
+                    if engine is not None:
+                        engine.stop()
+                except Exception:
+                    pass
+                engine = None
             finally:
                 if done is not None:
                     done.set()
@@ -101,11 +109,14 @@ class Speaker:
         done = threading.Event() if block else None
         self._queue.put((text, done))
         if done is not None:
-            done.wait(timeout=60)
+            # Bounded so a wedged engine can't stall the turn for a full minute;
+            # the worker rebuilds the engine after a failure.
+            done.wait(timeout=15)
 
     def stop(self) -> None:
         if self._started:
             self._queue.put(self._SENTINEL)
+            self._thread.join(timeout=3)
 
 
 def build_speaker(config) -> Speaker:
