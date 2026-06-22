@@ -1,6 +1,8 @@
 """Thin client for the Ollama HTTP API with tool-calling support."""
 from __future__ import annotations
 
+import time
+
 import requests
 
 
@@ -57,11 +59,18 @@ class OllamaClient:
         }
         if tools:
             payload["tools"] = tools
-        try:
-            resp = requests.post(f"{self.host}/api/chat", json=payload, timeout=self.timeout)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            raise OllamaError(f"Ollama request failed: {exc}") from exc
+        last_exc = None
+        for attempt in range(2):
+            try:
+                resp = requests.post(f"{self.host}/api/chat", json=payload, timeout=self.timeout)
+                resp.raise_for_status()
+                break
+            except requests.RequestException as exc:
+                last_exc = exc
+                if attempt == 0:
+                    time.sleep(0.5)  # one retry survives a momentary Ollama restart
+        else:
+            raise OllamaError(f"Ollama request failed: {last_exc}") from last_exc
 
         data = resp.json()
         if isinstance(data, dict) and data.get("error"):
