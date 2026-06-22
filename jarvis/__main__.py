@@ -29,17 +29,30 @@ def _doctor(config) -> int:
         print(f"[{'OK' if present else '!!'}] requested model '{config.model}' present")
         if not present:
             print(f"      fix: ollama pull {config.model}")
+        big = (":7b", ":8b", ":13b", ":14b", ":34b", ":70b")
+        if any(tag in config.model.lower() for tag in big):
+            print(f"[!!] '{config.model}' likely exceeds a 4GB GPU; it will spill to CPU")
+            print("     and respond slowly. Consider: ollama pull llama3.2:3b")
+        print(f"      keep_alive={config.keep_alive}  num_ctx={config.num_ctx}")
     else:
         print("      fix: install Ollama (winget install Ollama.Ollama), start it,")
         print(f"           then run: ollama pull {config.model}")
 
     try:
+        import sounddevice as sd
+
         from .audio import list_input_devices
 
         devices = list_input_devices()
         print(f"[{'OK' if devices else '!!'}] {len(devices)} microphone input device(s)")
         if devices:
             print(f"      e.g. {devices[0]}")
+        try:  # actually open the device — enumeration alone can be misleading
+            with sd.InputStream(samplerate=config.sample_rate, channels=1, dtype="float32") as s:
+                s.read(1024)
+            print(f"[OK] opened the default mic at {config.sample_rate} Hz")
+        except Exception as exc:
+            print(f"[!!] could not open the mic at {config.sample_rate} Hz: {exc}")
     except Exception as exc:
         print(f"[!!] audio backend failed to load: {exc}")
 
@@ -51,6 +64,7 @@ def _doctor(config) -> int:
         engine.stop()
         sample = ", ".join(v.name for v in voices[:4])
         print(f"[OK] {len(voices)} text-to-speech voice(s): {sample}")
+        print("      (note: real speech runs on a separate COM-initialised thread)")
     except Exception as exc:
         print(f"[!!] text-to-speech failed to init: {exc}")
 
@@ -69,7 +83,12 @@ def _doctor(config) -> int:
     except Exception as exc:
         print(f"[!!] openwakeword import failed: {exc}")
 
-    print(f"\nwake_mode = {config.wake_mode}")
+    if config.wake_mode == "hotkey":
+        print("\n[!!] wake_mode='hotkey' is unimplemented; voice mode falls back to press-Enter.")
+    elif config.wake_mode not in ("wakeword", "enter"):
+        print(f"\n[!!] unknown wake_mode={config.wake_mode!r}; expected 'wakeword' or 'enter'.")
+    else:
+        print(f"\n[OK] wake_mode = {config.wake_mode}")
     return 0
 
 
