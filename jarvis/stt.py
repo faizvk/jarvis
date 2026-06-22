@@ -7,6 +7,14 @@ from __future__ import annotations
 
 import threading
 
+# Whisper tends to emit these canned phrases on near-silence; a transcript that
+# reduces to one of them is treated as nothing said.
+_HALLUCINATIONS = {
+    "thank you", "thanks", "thank you.", "thanks for watching",
+    "thank you for watching", "please subscribe", "you", "bye", "bye.",
+    "okay", "uh", ".",
+}
+
 
 class Transcriber:
     def __init__(self, config):
@@ -43,9 +51,24 @@ class Transcriber:
             audio,
             language=self.config.language or None,
             vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500},
             beam_size=self.config.stt_beam_size,
         )
-        return " ".join(seg.text.strip() for seg in segments).strip()
+        kept = []
+        for seg in segments:
+            # Drop segments Whisper itself flags as likely non-speech / low-confidence.
+            if getattr(seg, "no_speech_prob", 0.0) > 0.6:
+                continue
+            if getattr(seg, "avg_logprob", 0.0) < -1.0:
+                continue
+            piece = seg.text.strip()
+            if piece:
+                kept.append(piece)
+        text = " ".join(kept).strip()
+        # A transcript that is just a known filler phrase = silence.
+        if text.lower().strip(" .!?,") in _HALLUCINATIONS:
+            return ""
+        return text
 
 
 def build_transcriber(config) -> Transcriber:
