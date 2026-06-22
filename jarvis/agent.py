@@ -98,7 +98,15 @@ class Jarvis:
 
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
-                return (message.get("content") or "").strip()
+                content = (message.get("content") or "").strip()
+                # Small models sometimes emit an empty turn — never go silent.
+                return content or "Sorry, I didn't catch a clear answer — could you say that again?"
+
+            # Surface any spoken preamble ("let me check the weather...") in real time
+            # so the user gets feedback during the tool round instead of silence.
+            preamble = (message.get("content") or "").strip()
+            if preamble:
+                self.speak(preamble)
 
             for call in tool_calls:
                 fn = call.get("function", {}) or {}
@@ -116,7 +124,8 @@ class Jarvis:
 
         # Too many tool rounds — ask for a final answer with tools disabled.
         final = self.client.chat(self.messages) or {}
-        return (final.get("content") or "").strip()
+        content = (final.get("content") or "").strip()
+        return content or "I'm having trouble finishing that — could you rephrase?"
 
     # --- interaction loops ---------------------------------------------------
     def enable_voice(self) -> None:
@@ -252,5 +261,4 @@ class Jarvis:
         except OllamaError as exc:
             self.speak(f"I couldn't reach my brain. {exc}")
             return
-        if reply:
-            self.speak(reply)
+        self.speak(reply or "Sorry, I didn't get that — could you try again?")
