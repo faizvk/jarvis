@@ -87,7 +87,32 @@ class Jarvis:
         )
 
     # --- core reasoning loop -------------------------------------------------
+    MAX_HISTORY = 16  # non-system messages kept, to bound the context window
+
+    def _trim_history(self) -> None:
+        """Keep the system prompt plus the most recent messages. Never start the
+        kept window on an orphaned tool result — Ollama rejects a 'tool' message
+        with no preceding assistant tool_calls."""
+        rest = self.messages[1:]
+        if len(rest) <= self.MAX_HISTORY:
+            return
+        rest = rest[-self.MAX_HISTORY:]
+        while rest and rest[0].get("role") == "tool":
+            rest = rest[1:]
+        self.messages = self.messages[:1] + rest
+
     def handle_text(self, user_text: str) -> str:
+        """Run one user turn, rolling history back if it fails partway."""
+        snapshot = list(self.messages)
+        try:
+            return self._run_turn(user_text)
+        except Exception:
+            self.messages = snapshot  # drop a half-finished turn (no orphaned tool calls)
+            raise
+        finally:
+            self._trim_history()
+
+    def _run_turn(self, user_text: str) -> str:
         """Run one user turn through the model, executing any tool calls."""
         self.messages.append({"role": "user", "content": user_text})
         ctx = self._context()
