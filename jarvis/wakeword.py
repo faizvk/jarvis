@@ -32,6 +32,10 @@ class WakeWordListener:
                 )
         return self._model
 
+    def load(self) -> None:
+        """Load the wake-word model now (raises if it can't be built/downloaded)."""
+        self._ensure_model()
+
     def wait_for_wake(self, should_stop=None) -> bool:
         """Block until the wake word is heard. Returns False if ``should_stop`` fires."""
         import sounddevice as sd
